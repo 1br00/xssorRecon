@@ -1,0 +1,71 @@
+@page "/register"
+@using System.ComponentModel.DataAnnotations
+@using Xss0rSaaS.App.Contracts
+@inject ApiClientService ApiClient
+@inject NavigationManager Navigation
+
+<PageTitle>Register</PageTitle>
+
+<h1>Create account</h1>
+
+<EditForm Model="@model" OnValidSubmit="HandleRegisterAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-grid">
+        <label>Email</label>
+        <InputText @bind-Value="model.Email" class="form-control" />
+
+        <label>Password</label>
+        <InputText @bind-Value="model.Password" Type="password" class="form-control" />
+    </div>
+
+    <button class="btn btn-primary" type="submit" disabled="@isLoading">
+        @(isLoading ? "Creating..." : "Register")
+    </button>
+</EditForm>
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <p class="text-danger mt-3">@error</p>
+}
+else if (success)
+{
+    <p class="text-success mt-3">Account created. Redirecting to login...</p>
+}
+
+@code {
+    private readonly RegisterFormModel model = new();
+    private bool isLoading;
+    private bool success;
+    private string? error;
+
+    private async Task HandleRegisterAsync()
+    {
+        isLoading = true;
+        success = false;
+        error = null;
+
+        var result = await ApiClient.RegisterAsync(new RegisterRequest(model.Email, model.Password));
+        isLoading = false;
+
+        if (!result.Success)
+        {
+            error = $"Registration failed: {result.Error}";
+            return;
+        }
+
+        success = true;
+        await Task.Delay(900);
+        Navigation.NavigateTo("/login");
+    }
+
+    private sealed class RegisterFormModel
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required, MinLength(8)]
+        public string Password { get; set; } = string.Empty;
+    }
+}

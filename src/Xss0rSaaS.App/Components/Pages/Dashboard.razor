@@ -1,0 +1,104 @@
+@page "/dashboard"
+@inject ApiClientService ApiClient
+@inject ClientSessionState SessionState
+@inject NavigationManager Navigation
+
+<PageTitle>Dashboard</PageTitle>
+
+<h1>User dashboard</h1>
+
+@if (!SessionState.IsAuthenticated)
+{
+    <p>You need to login first.</p>
+    <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/login"))">Go to login</button>
+}
+else if (isLoading)
+{
+    <p>Loading dashboard...</p>
+}
+else if (dashboard is null)
+{
+    <p class="text-danger">Could not load dashboard data.</p>
+}
+else
+{
+    <div class="card-grid">
+        <div class="card">
+            <h3>@dashboard.Email</h3>
+            <p>Role: @dashboard.Role</p>
+            <p>Active API keys: @dashboard.ActiveApiKeys</p>
+        </div>
+        <div class="card">
+            <h3>License</h3>
+            <p>Key: @(dashboard.ActiveLicenseKey ?? "No active key")</p>
+            <p>Expires: @(dashboard.LicenseExpiresAtUtc?.ToString("u") ?? "-")</p>
+        </div>
+        <div class="card">
+            <h3>Scan history</h3>
+            <p>Total records: @dashboard.ScanHistoryEntries</p>
+        </div>
+    </div>
+
+    <div class="action-row">
+        <button class="btn btn-outline-primary" @onclick="RotateApiKeyAsync">Rotate API key</button>
+        <button class="btn btn-outline-secondary" @onclick="LoadDashboardAsync">Refresh</button>
+        <button class="btn btn-outline-danger" @onclick="Logout">Logout</button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(newApiKey))
+    {
+        <p class="text-success mt-2">New API Key (save now): <code>@newApiKey</code></p>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <p class="text-danger mt-2">@error</p>
+    }
+}
+
+@code {
+    private Contracts.DashboardResponse? dashboard;
+    private bool isLoading = true;
+    private string? error;
+    private string? newApiKey;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardAsync();
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        if (!SessionState.IsAuthenticated)
+        {
+            isLoading = false;
+            return;
+        }
+
+        isLoading = true;
+        error = null;
+        dashboard = await ApiClient.GetDashboardAsync();
+        isLoading = false;
+    }
+
+    private async Task RotateApiKeyAsync()
+    {
+        newApiKey = null;
+        error = null;
+        var result = await ApiClient.RotateApiKeyAsync();
+        if (!result.Success)
+        {
+            error = $"Could not rotate key: {result.Error}";
+            return;
+        }
+
+        newApiKey = result.ApiKey;
+        await LoadDashboardAsync();
+    }
+
+    private void Logout()
+    {
+        SessionState.Clear();
+        Navigation.NavigateTo("/login");
+    }
+}

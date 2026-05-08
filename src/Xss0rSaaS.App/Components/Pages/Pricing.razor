@@ -1,0 +1,72 @@
+@page "/pricing"
+@inject ApiClientService ApiClient
+@inject ClientSessionState SessionState
+@inject NavigationManager Navigation
+
+<PageTitle>Pricing</PageTitle>
+
+<h1>Pricing & coupons</h1>
+
+<div class="card-grid">
+    <div class="card">
+        <h3>Starter</h3>
+        <p>$19 / month</p>
+        <p>1 activation, baseline dashboard access.</p>
+    </div>
+    <div class="card">
+        <h3>Pro</h3>
+        <p>$59 / month</p>
+        <p>5 activations, priority updates and support.</p>
+    </div>
+</div>
+
+@if (!SessionState.IsAuthenticated)
+{
+    <p class="mt-3">Login is required to redeem coupons.</p>
+    <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/login"))">Go to login</button>
+}
+else
+{
+    <div class="action-row">
+        <input class="form-control coupon-input" @bind="couponCode" placeholder="Coupon code (e.g. XSS0R50)" />
+        <button class="btn btn-primary" @onclick="RedeemAsync">Redeem</button>
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p class="text-success mt-2">@message</p>
+}
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <p class="text-danger mt-2">@error</p>
+}
+
+@code {
+    private string couponCode = string.Empty;
+    private string? message;
+    private string? error;
+
+    private async Task RedeemAsync()
+    {
+        message = null;
+        error = null;
+
+        if (string.IsNullOrWhiteSpace(couponCode))
+        {
+            error = "Coupon code is required.";
+            return;
+        }
+
+        var result = await ApiClient.RedeemCouponAsync(couponCode);
+        if (!result.Success)
+        {
+            error = $"Could not redeem coupon: {result.Error}";
+            return;
+        }
+
+        message = "Coupon redeemed successfully.";
+        couponCode = string.Empty;
+    }
+}

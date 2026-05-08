@@ -1,0 +1,171 @@
+@page "/admin"
+@using Xss0rSaaS.App.Contracts
+@inject ApiClientService ApiClient
+@inject ClientSessionState SessionState
+@inject NavigationManager Navigation
+
+<PageTitle>Admin</PageTitle>
+
+<h1>Admin panel</h1>
+
+@if (!SessionState.IsAuthenticated)
+{
+    <p>Please login as admin.</p>
+    <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/login"))">Go to login</button>
+}
+else if (!string.Equals(SessionState.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+{
+    <p class="text-danger">Admin role required.</p>
+}
+else
+{
+    <div class="card-grid">
+        <div class="card">
+            <h3>Create coupon</h3>
+            <div class="form-grid">
+                <label>Code</label>
+                <InputText class="form-control" @bind-Value="couponCode" />
+
+                <label>Percent off</label>
+                <InputNumber class="form-control" @bind-Value="couponPercent" />
+
+                <label>Max uses</label>
+                <InputNumber class="form-control" @bind-Value="couponMaxUses" />
+
+                <label>Expires at (UTC)</label>
+                <InputDate class="form-control" @bind-Value="couponExpiresDate" />
+            </div>
+            <button class="btn btn-primary mt-2" @onclick="CreateCouponAsync">Create coupon</button>
+        </div>
+
+        <div class="card">
+            <h3>Create release</h3>
+            <div class="form-grid">
+                <label>Version</label>
+                <InputText class="form-control" @bind-Value="releaseVersion" />
+
+                <label>Changelog</label>
+                <InputTextArea class="form-control" @bind-Value="releaseChangelog" />
+
+                <label>Windows URL</label>
+                <InputText class="form-control" @bind-Value="releaseWindowsUrl" />
+
+                <label>Linux URL</label>
+                <InputText class="form-control" @bind-Value="releaseLinuxUrl" />
+            </div>
+            <button class="btn btn-primary mt-2" @onclick="CreateReleaseAsync">Create release</button>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <button class="btn btn-outline-secondary" @onclick="LoadUsersAsync">Refresh users</button>
+    </div>
+
+    @if (users.Count > 0)
+    {
+        <table class="table mt-3">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Banned</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in users)
+                {
+                    <tr>
+                        <td>@user.Email</td>
+                        <td>@user.Role</td>
+                        <td>@(user.IsBanned ? "Yes" : "No")</td>
+                        <td>@user.CreatedAtUtc.ToString("u")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p class="text-success mt-2">@message</p>
+}
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <p class="text-danger mt-2">@error</p>
+}
+
+@code {
+    private IReadOnlyList<UserDto> users = [];
+    private string? message;
+    private string? error;
+
+    private string couponCode = "XSS0R10";
+    private int couponPercent = 10;
+    private int couponMaxUses = 100;
+    private DateTime couponExpiresDate = DateTime.UtcNow.AddMonths(1);
+
+    private string releaseVersion = "1.0.1";
+    private string releaseChangelog = "Maintenance release";
+    private string releaseWindowsUrl = "https://example.invalid/releases/xss0r-win.zip";
+    private string releaseLinuxUrl = "https://example.invalid/releases/xss0r-linux.tar.gz";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        message = null;
+        error = null;
+        if (!SessionState.IsAuthenticated || !string.Equals(SessionState.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        users = await ApiClient.GetUsersAsync();
+    }
+
+    private async Task CreateCouponAsync()
+    {
+        message = null;
+        error = null;
+
+        var result = await ApiClient.CreateCouponAsync(new CreateCouponRequest(
+            couponCode,
+            couponPercent,
+            couponMaxUses,
+            DateTime.SpecifyKind(couponExpiresDate, DateTimeKind.Utc)));
+
+        if (!result.Success)
+        {
+            error = $"Failed to create coupon: {result.Error}";
+            return;
+        }
+
+        message = "Coupon created.";
+    }
+
+    private async Task CreateReleaseAsync()
+    {
+        message = null;
+        error = null;
+
+        var result = await ApiClient.CreateReleaseAsync(new CreateReleaseRequest(
+            releaseVersion,
+            releaseChangelog,
+            releaseWindowsUrl,
+            releaseLinuxUrl,
+            true));
+
+        if (!result.Success)
+        {
+            error = $"Failed to create release: {result.Error}";
+            return;
+        }
+
+        message = "Release created.";
+    }
+}

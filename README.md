@@ -19,3 +19,37 @@ To use xss0rRecon effectively, it's essential that all required files are downlo
         With everything in place, you’re now ready to run xss0rRecon and start your recon tasks! 💻
 
 If you have any questions or run into issues, feel free to reach out to me.
+
+---
+
+## .NET Blazor SaaS starter (Docker)
+
+This repository now also contains a full .NET starter for a SaaS dashboard:
+
+- Blazor Server UI
+- ASP.NET Core API endpoints
+- JWT authentication
+- Entity Framework Core + PostgreSQL
+- Dockerized deployment (`docker-compose.yml`)
+
+### Project path
+
+`src/Xss0rSaaS.App`
+
+### Run locally with Docker
+
+```bash
+docker compose up --build
+```
+
+Then open:
+
+- App: `http://localhost:8080`
+- OpenAPI JSON (development only): `/openapi/v1.json`
+
+### Default seeded admin
+
+- Email: `admin@xss0r.local`
+- Password: `ChangeMe123!`
+
+Change these values via environment variables in `docker-compose.yml` before production use.
