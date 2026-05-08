@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: xss0r-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: xss0r_saas
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d xss0r_saas" ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  app:
+    build:
+      context: .
+      dockerfile: src/Xss0rSaaS.App/Dockerfile
+    container_name: xss0r-saas-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=xss0r_saas;Username=postgres;Password=postgres
+      Jwt__Issuer: xss0r-saas
+      Jwt__Audience: xss0r-saas-clients
+      Jwt__SigningKey: change-this-jwt-secret-before-production
+      Jwt__ExpiryMinutes: 120
+      DownloadSigning__Secret: change-this-download-secret-before-production
+      App__BaseUrl: http://app:8080
+      Seed__AdminEmail: admin@xss0r.local
+      Seed__AdminPassword: ChangeMe123!
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:

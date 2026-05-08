@@ -1,0 +1,63 @@
+@page "/login"
+@using System.ComponentModel.DataAnnotations
+@using Xss0rSaaS.App.Contracts
+@inject ApiClientService ApiClient
+@inject ClientSessionState SessionState
+@inject NavigationManager Navigation
+
+<PageTitle>Login</PageTitle>
+
+<h1>Login</h1>
+
+<EditForm Model="@model" OnValidSubmit="HandleLoginAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-grid">
+        <label>Email</label>
+        <InputText @bind-Value="model.Email" class="form-control" />
+
+        <label>Password</label>
+        <InputText @bind-Value="model.Password" Type="password" class="form-control" />
+    </div>
+
+    <button class="btn btn-primary" type="submit" disabled="@isLoading">
+        @(isLoading ? "Signing in..." : "Login")
+    </button>
+</EditForm>
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <p class="text-danger mt-3">@error</p>
+}
+
+@code {
+    private readonly LoginFormModel model = new();
+    private bool isLoading;
+    private string? error;
+
+    private async Task HandleLoginAsync()
+    {
+        isLoading = true;
+        error = null;
+        var result = await ApiClient.LoginAsync(new LoginRequest(model.Email, model.Password));
+        isLoading = false;
+
+        if (!result.Success)
+        {
+            error = $"Login failed: {result.Error}";
+            return;
+        }
+
+        Navigation.NavigateTo("/dashboard");
+    }
+
+    private sealed class LoginFormModel
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        public string Password { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,53 @@
+@page "/downloads"
+@inject ApiClientService ApiClient
+@inject ClientSessionState SessionState
+@inject NavigationManager Navigation
+
+<PageTitle>Downloads</PageTitle>
+
+<h1>Downloads</h1>
+
+@if (!SessionState.IsAuthenticated)
+{
+    <p>Please login to access downloads.</p>
+    <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/login"))">Go to login</button>
+}
+else if (isLoading)
+{
+    <p>Loading releases...</p>
+}
+else if (releases.Count == 0)
+{
+    <p>No releases available right now.</p>
+}
+else
+{
+    @foreach (var release in releases)
+    {
+        <div class="release-card">
+            <h3>@release.Version</h3>
+            <p>@release.Changelog</p>
+            <p>Active: @release.IsActive</p>
+            <p>Published: @release.CreatedAtUtc.ToString("u")</p>
+            <p class="muted">
+                Signed link endpoint:
+                <code>/api/downloads/@release.Id/signed?platform=windows</code>
+            </p>
+        </div>
+    }
+}
+
+@code {
+    private bool isLoading = true;
+    private IReadOnlyList<Contracts.ReleaseDto> releases = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (SessionState.IsAuthenticated)
+        {
+            releases = await ApiClient.GetReleasesAsync();
+        }
+
+        isLoading = false;
+    }
+}
